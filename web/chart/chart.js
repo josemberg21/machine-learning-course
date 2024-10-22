@@ -35,9 +35,22 @@ class Chart {
         this.dataBounds = this._getDataBounds();
         this.defaultDataBounds = this._getDataBounds();
 
+        this.dynamicPoint = null;
+        this.nearestSample = null;
+
         this._draw();
 
         this._addEventListeners();
+    }
+
+    showDynamicPoint(point, label, nearestSample) {
+        this.dynamicPoint = { point, label };
+        this.nearestSample = nearestSample;
+        this._draw();
+    }
+
+    hideDynamicPoint() {
+        this.dynamicPoint = null;
     }
 
     _addEventListeners() {
@@ -226,10 +239,13 @@ class Chart {
         const maxX = Math.max(...x);
         const minY = Math.min(...y);
         const maxY = Math.max(...y);
+        const deltaX = maxX - minX;
+        const deltaY = maxY - minY;
+        const maxDelta = Math.max(deltaX, deltaY);
         const bounds = {
             left: minX,
-            right: maxX,
-            top: maxY,
+            right: maxX, // minX + maxDelta,
+            top: maxY, // minY + maxDelta,
             bottom: minY
         };
 
@@ -257,6 +273,32 @@ class Chart {
             );
         }
 
+        if (this.dynamicPoint) {
+            const { point, label } = this.dynamicPoint;
+            const pixelLoc = math.remapPoint(
+                this.dataBounds,
+                this.pixelBounds,
+                point
+            );
+
+            graphics.drawPoint(ctx, pixelLoc, 'rgba(255, 255, 255, 0.7)', 1000000);
+
+            ctx.beginPath();
+            ctx.moveTo(...pixelLoc);
+            ctx.lineTo(...math.remapPoint(
+                this.dataBounds,
+                this.pixelBounds,
+                this.nearestSample.point
+            ));
+            ctx.stroke();
+
+            graphics.drawImage(ctx,
+                this.styles[label].image,
+                pixelLoc
+            );
+        
+        }
+
         this._drawAxes();
     }
 
@@ -282,9 +324,7 @@ class Chart {
             this.ctx, pLoc, grd, this.margin * 2
         );
 
-        this._drawSamples(
-            [sample]
-        );
+        this._drawSamples([sample]);
     }
 
     _drawAxes() {
